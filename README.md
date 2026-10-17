@@ -130,10 +130,9 @@ ProjetoSimples/
 │   └── test/                          # Testes unitários automatizados (node:test)
 │       ├── seguranca.test.js          # Validação de vetores RFC 6238 e criptografia
 │       └── consumo.test.js            # Validação do cálculo de energia e tarifas
-├── receptor_pc/                       # Script de diagnóstico em Python
-│   ├── receptor_mqtt.py               # Monitor de terminal de tópicos MQTT
-│   └── requirements.txt               # Dependências Python (paho-mqtt)
-└── docs/                              # Manuais e documentações auxiliares
+└── receptor_pc/                       # Script de diagnóstico em Python
+    ├── receptor_mqtt.py               # Monitor de terminal de tópicos MQTT
+    └── requirements.txt               # Dependências Python (paho-mqtt)
 ```
 
 ---
