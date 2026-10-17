@@ -41,8 +41,57 @@
   const statusMedidor = (m) => el('span', { classe: `etiqueta ${m.online ? 'ok' : 'erro'}` },
     [el('span', { classe: 'ponto' }), m.online ? 'Online' : 'Offline']);
 
+  const alertasDispensados = new Set(JSON.parse(sessionStorage.getItem('alertas_dispensados') || '[]'));
+  function salvarDispensados() {
+    try { sessionStorage.setItem('alertas_dispensados', JSON.stringify([...alertasDispensados])); } catch (_) {}
+  }
+
   function mostrarAlertas(caixa, alertas) {
-    caixa.replaceChildren(...(alertas || []).map((t) => el('div', { classe: 'mensagem-aviso', texto: t })));
+    const ativos = (alertas || []).filter((t) => !alertasDispensados.has(t));
+    if (!ativos.length) {
+      caixa.replaceChildren();
+      return;
+    }
+
+    const elementos = [];
+    if (ativos.length > 1) {
+      elementos.push(el('div', { classe: 'barra-alertas-topo' }, [
+        el('button', {
+          type: 'button',
+          classe: 'botao-limpar-alertas',
+          texto: 'Dispensar todos os avisos',
+          onclick: () => {
+            ativos.forEach((t) => alertasDispensados.add(t));
+            salvarDispensados();
+            caixa.replaceChildren();
+          },
+        }),
+      ]));
+    }
+
+    ativos.forEach((t) => {
+      const item = el('div', { classe: 'mensagem-aviso' }, [
+        el('span', { classe: 'mensagem-aviso-texto', texto: t }),
+        el('button', {
+          type: 'button',
+          classe: 'mensagem-aviso-fechar',
+          'aria-label': 'Fechar este aviso',
+          title: 'Fechar este aviso',
+          texto: '✕',
+          onclick: () => {
+            alertasDispensados.add(t);
+            salvarDispensados();
+            item.remove();
+            if (!caixa.querySelectorAll('.mensagem-aviso').length) {
+              caixa.replaceChildren();
+            }
+          },
+        }),
+      ]);
+      elementos.push(item);
+    });
+
+    caixa.replaceChildren(...elementos);
   }
 
   // ======================================================================
