@@ -90,7 +90,7 @@ O sistema atende a dois cenários:
 ProjetoSimples/
 ├── .gitignore                         # Protege segredos, .env, bancos locais e dependências
 ├── README.md                          # Documentação principal do repositório
-├── LEIA-ME.md                         # Guia geral e notas de versão
+├── PLANO_CONFIG_MQTT_ADMIN.md         # Especificação técnica: configuração MQTT via painel
 ├── broker_mosquitto/                  # Configurações do broker privado próprio
 │   ├── mosquitto.conf                 # Configuração de porta, persistência e autenticação
 │   ├── acl                            # Regras de controle de acesso por tópico e usuário
@@ -103,36 +103,32 @@ ProjetoSimples/
 │   ├── opta_telemetria_7m38.ino       # Modbus RTU mestre (RS-485) + Ethernet + MQTT
 │   ├── segredos.exemplo.h             # Modelo versionado de credenciais do OPTA
 │   └── segredos.h                     # Credenciais do broker de produção (ignorado pelo git)
-├── dashboard_web/                     # Aplicação Web (Node.js + SQLite + Frontend)
-│   ├── package.json                   # Dependências e scripts npm
-│   ├── .env.exemplo                   # Modelo de variáveis de ambiente
-│   ├── server.js                      # Inicialização do servidor Express e WebSocket
-│   ├── LEIA-ME-WEB.md                 # Documentação detalhada da aplicação web
-│   ├── src/                           # Código modular do backend
-│   │   ├── config.js                  # Carregamento e validação de configurações
-│   │   ├── db.js                      # Inicialização do SQLite (WAL) e tabelas
-│   │   ├── seguranca.js               # TOTP nativo, AES-256-GCM, tokens de sessão
-│   │   ├── auth.js                    # Middlewares de sessão, rotas de login e 2FA
-│   │   ├── telemetria.js              # Ingestão e validação MQTT
-│   │   ├── tempoReal.js               # Servidor WebSocket autenticado com filtros de perfil
-│   │   ├── consumo.js                 # Algoritmo de cálculo de kWh e faturamento
-│   │   └── rotas.js                   # Rotas de API do Administrador e do Cliente
-│   ├── public/                        # Interface Web responsiva (HTML/CSS/JS puro)
-│   │   ├── login.html                 # Telas de login, troca de senha e 2FA
-│   │   ├── admin.html                 # Painel de controle do Administrador
-│   │   ├── cliente.html               # Painel de autoatendimento do Cliente
-│   │   ├── css/app.css                # Estilização completa (tema escuro profissional)
-│   │   └── js/                        # Controladores de tela e conexões em tempo real
-│   ├── scripts/                       # Scripts auxiliares e ferramentas de teste
-│   │   ├── simular.js                 # Simulador MQTT de múltiplos medidores
-│   │   ├── gerar-historico.js         # Geração de 90 dias de leituras e clientes teste
-│   │   └── admin-cli.js               # Utilitário de linha de comando para emergências
-│   └── test/                          # Testes unitários automatizados (node:test)
-│       ├── seguranca.test.js          # Validação de vetores RFC 6238 e criptografia
-│       └── consumo.test.js            # Validação do cálculo de energia e tarifas
-└── receptor_pc/                       # Script de diagnóstico em Python
-    ├── receptor_mqtt.py               # Monitor de terminal de tópicos MQTT
-    └── requirements.txt               # Dependências Python (paho-mqtt)
+└── dashboard_web/                     # Aplicação Web (Node.js + SQLite + Frontend)
+    ├── package.json                   # Dependências e scripts npm
+    ├── .env.exemplo                   # Modelo de variáveis de ambiente
+    ├── server.js                      # Inicialização do servidor Express e WebSocket
+    ├── src/                           # Código modular do backend
+    │   ├── config.js                  # Carregamento e validação de configurações
+    │   ├── db.js                      # Inicialização do SQLite (WAL) e tabelas
+    │   ├── seguranca.js               # TOTP nativo, AES-256-GCM, tokens de sessão
+    │   ├── auth.js                    # Middlewares de sessão, rotas de login e 2FA
+    │   ├── telemetria.js              # Ingestão e validação MQTT
+    │   ├── tempoReal.js               # Servidor WebSocket autenticado com filtros de perfil
+    │   ├── consumo.js                 # Algoritmo de cálculo de kWh e faturamento
+    │   └── rotas.js                   # Rotas de API do Administrador e do Cliente
+    ├── public/                        # Interface Web responsiva (HTML/CSS/JS puro)
+    │   ├── login.html                 # Telas de login, troca de senha e 2FA
+    │   ├── admin.html                 # Painel de controle do Administrador
+    │   ├── cliente.html               # Painel de autoatendimento do Cliente
+    │   ├── css/app.css                # Estilização completa (tema escuro profissional)
+    │   └── js/                        # Controladores de tela e conexões em tempo real
+    ├── scripts/                       # Scripts auxiliares e ferramentas de teste
+    │   ├── simular.js                 # Simulador MQTT de múltiplos medidores
+    │   ├── gerar-historico.js         # Geração de 90 dias de leituras e clientes teste
+    │   └── admin-cli.js               # Utilitário de linha de comando para emergências
+    └── test/                          # Testes unitários automatizados (node:test)
+        ├── seguranca.test.js          # Validação de vetores RFC 6238 e criptografia
+        └── consumo.test.js            # Validação do cálculo de energia e tarifas
 ```
 
 ---
