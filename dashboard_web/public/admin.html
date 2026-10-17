@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a1324">
+  <meta name="robots" content="noindex">
+  <title>Administração — Telemetria de Energia</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-interno">
+      <div class="marca">
+        <div class="marca-icone" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+        <div>
+          <div class="marca-nome">Telemetria de Energia</div>
+          <div class="marca-sub">Painel do administrador</div>
+        </div>
+      </div>
+      <div class="topo-acoes">
+        <span id="status-mqtt" class="etiqueta" title="Conexão do servidor com o broker MQTT"><span class="ponto"></span> MQTT</span>
+        <span id="status-ws" class="etiqueta" title="Atualização em tempo real nesta página"><span class="ponto"></span> Tempo real</span>
+        <span id="usuario-nome" class="usuario-nome"></span>
+        <button id="btn-senha" class="botao-secundario" type="button">Minha senha</button>
+        <button id="btn-sair" class="botao-secundario" type="button">Sair</button>
+      </div>
+    </div>
+    <nav class="abas" aria-label="Seções">
+      <button class="aba ativa" data-aba="geral" type="button">Visão geral</button>
+      <button class="aba" data-aba="faturamento" type="button">Faturamento</button>
+      <button class="aba" data-aba="clientes" type="button">Clientes</button>
+      <button class="aba" data-aba="medidores" type="button">Medidores</button>
+      <button class="aba" data-aba="tarifas" type="button">Tarifas</button>
+      <button class="aba" data-aba="usuarios" type="button">Usuários</button>
+      <button class="aba" data-aba="auditoria" type="button">Segurança</button>
+    </nav>
+  </header>
+
+  <main class="conteudo">
+    <!-- ======================= VISÃO GERAL ======================= -->
+    <section id="aba-geral">
+      <div class="cabecalho-secao">
+        <div>
+          <h2>Visão geral</h2>
+          <p id="geral-mes"></p>
+        </div>
+      </div>
+      <div id="geral-alertas"></div>
+      <div class="indicadores">
+        <div class="indicador">
+          <div class="indicador-rotulo">Consumo no mês</div>
+          <div class="indicador-valor" id="kpi-kwh">—</div>
+          <div class="indicador-rodape">soma de todos os medidores</div>
+        </div>
+        <div class="indicador ambar">
+          <div class="indicador-rotulo">Faturamento estimado</div>
+          <div class="indicador-valor" id="kpi-valor">—</div>
+          <div class="indicador-rodape">consumo × tarifa de cada dia</div>
+        </div>
+        <div class="indicador neutro">
+          <div class="indicador-rotulo">Tarifa vigente</div>
+          <div class="indicador-valor" id="kpi-tarifa">—</div>
+          <div class="indicador-rodape" id="kpi-tarifa-desde"></div>
+        </div>
+        <div class="indicador neutro">
+          <div class="indicador-rotulo">Medidores online</div>
+          <div class="indicador-valor" id="kpi-online">—</div>
+          <div class="indicador-rodape" id="kpi-sem-cliente"></div>
+        </div>
+      </div>
+
+      <div class="painel">
+        <div class="painel-titulo"><h3>Medidores em tempo real</h3><span class="mudo pequeno">Clique num medidor para ver o gráfico de potência</span></div>
+        <div class="tabela-rolagem">
+          <table>
+            <thead><tr>
+              <th>Medidor</th><th>Cliente</th><th>Status</th>
+              <th class="dir">Tensão</th><th class="dir">Corrente</th><th class="dir">Potência</th>
+              <th class="dir esconder-celular">Contador</th><th class="dir">kWh no mês</th><th class="dir">R$ no mês</th>
+            </tr></thead>
+            <tbody id="tabela-aovivo"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="painel" id="painel-potencia">
+        <div class="painel-titulo"><h3 id="titulo-potencia">Potência ativa</h3><span class="mudo pequeno">últimas leituras recebidas</span></div>
+        <div class="grafico baixo"><canvas id="grafico-potencia" aria-label="Gráfico de potência em tempo real"></canvas></div>
+      </div>
+
+      <div class="painel">
+        <div class="painel-titulo"><h3>Consumo diário no mês (todos os medidores)</h3></div>
+        <div class="grafico"><canvas id="grafico-geral" aria-label="Consumo diário do mês"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ======================= FATURAMENTO ======================= -->
+    <section id="aba-faturamento" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Faturamento</h2><p>Consumo e valor de cada cliente no mês escolhido.</p></div>
+        <div class="ferramentas">
+          <input type="month" id="fat-mes" aria-label="Mês">
+          <a id="fat-csv" class="botao botao-secundario" href="#">Baixar planilha (CSV)</a>
+        </div>
+      </div>
+      <div id="fat-alertas"></div>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Cliente</th><th>Documento</th><th>Medidores</th><th class="dir">Consumo</th><th class="dir">Valor</th></tr></thead>
+          <tbody id="tabela-fat"></tbody>
+          <tfoot><tr><td colspan="3">Total</td><td class="dir" id="fat-total-kwh"></td><td class="dir" id="fat-total-valor"></td></tr></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= CLIENTES ======================= -->
+    <section id="aba-clientes" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Clientes</h2><p>Quem recebe a cobrança. Vincule os medidores na aba Medidores.</p></div>
+        <button id="btn-novo-cliente" class="botao-primario" type="button">+ Novo cliente</button>
+      </div>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Nome</th><th>Documento</th><th class="esconder-celular">E-mail</th><th class="esconder-celular">Telefone</th><th class="dir">Medidores</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="tabela-clientes"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= MEDIDORES ======================= -->
+    <section id="aba-medidores" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Medidores</h2><p>Medidores novos aparecem aqui sozinhos quando enviam a primeira leitura.</p></div>
+      </div>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Gateway / ID</th><th>Nome</th><th>Cliente</th><th>Status</th><th class="esconder-celular">Última leitura</th><th></th></tr></thead>
+          <tbody id="tabela-medidores"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= TARIFAS ======================= -->
+    <section id="aba-tarifas" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Tarifas</h2><p>Para mudar o preço, cadastre uma nova vigência. Meses já passados não são alterados.</p></div>
+      </div>
+      <form id="form-tarifa" class="painel">
+        <div class="painel-titulo"><h3>Nova tarifa</h3></div>
+        <div class="linha-campos">
+          <div class="campo"><label for="tarifa-valor">Valor do kWh (R$)</label><input id="tarifa-valor" inputmode="decimal" placeholder="0,9500" required></div>
+          <div class="campo"><label for="tarifa-inicio">Vale a partir de</label><input id="tarifa-inicio" type="date" required></div>
+          <div class="campo"><label for="tarifa-obs">Observação</label><input id="tarifa-obs" maxlength="200" placeholder="Ex.: reajuste anual"></div>
+        </div>
+        <button class="botao-primario" type="submit">Cadastrar tarifa</button>
+      </form>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Vale a partir de</th><th class="dir">Valor do kWh</th><th>Situação</th><th>Observação</th><th></th></tr></thead>
+          <tbody id="tabela-tarifas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= USUÁRIOS ======================= -->
+    <section id="aba-usuarios" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Usuários</h2><p>Cada usuário recebe uma senha provisória e cadastra o 2FA no primeiro acesso.</p></div>
+        <button id="btn-novo-usuario" class="botao-primario" type="button">+ Novo usuário</button>
+      </div>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>2FA</th><th class="esconder-celular">Último acesso</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="tabela-usuarios"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================= SEGURANÇA ======================= -->
+    <section id="aba-auditoria" class="oculto">
+      <div class="cabecalho-secao">
+        <div><h2>Registro de segurança</h2><p>Logins, tentativas que falharam e alterações feitas no sistema.</p></div>
+        <button id="btn-atualizar-auditoria" class="botao-secundario" type="button">Atualizar</button>
+      </div>
+      <div class="painel tabela-rolagem">
+        <table>
+          <thead><tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th class="esconder-celular">IP</th></tr></thead>
+          <tbody id="tabela-auditoria"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/vendor/chart.umd.js"></script>
+  <script src="/js/comum.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

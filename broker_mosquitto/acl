@@ -1,0 +1,11 @@
+# Cada usuário só acessa o que precisa.
+# OPTA / ESP32: só PUBLICA as próprias leituras e o próprio status
+user opta01
+topic write meu_projeto_energia_123/telemetria/opta01/#
+
+user esp32sim
+topic write meu_projeto_energia_123/telemetria/esp32sim/#
+
+# Servidor web: só LÊ a telemetria de todos os gateways
+user servidor
+topic read meu_projeto_energia_123/telemetria/#

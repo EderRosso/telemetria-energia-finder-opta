@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a1324">
+  <meta name="robots" content="noindex">
+  <title>Entrar — Telemetria de Energia</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="tela-login">
+    <div class="cartao-login">
+      <div class="marca">
+        <div class="marca-icone" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+        <div>
+          <div class="marca-nome">Telemetria de Energia</div>
+          <div class="marca-sub">Consumo e faturamento por medidor</div>
+        </div>
+      </div>
+
+      <div id="erro" class="mensagem-erro oculto" role="alert"></div>
+
+      <!-- Etapa 1: e-mail e senha -->
+      <form id="etapa-login" class="etapa oculto" autocomplete="on">
+        <h2>Entrar</h2>
+        <p>Use o e-mail e a senha cadastrados pelo administrador.</p>
+        <div class="campo">
+          <label for="email">E-mail</label>
+          <input id="email" type="email" autocomplete="username" required autofocus>
+        </div>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input id="senha" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="botao-primario largura-total" type="submit">Continuar</button>
+      </form>
+
+      <!-- Etapa 2 (1º acesso): trocar a senha provisória -->
+      <form id="etapa-trocar_senha" class="etapa oculto">
+        <h2>Crie sua senha</h2>
+        <p>No primeiro acesso, troque a senha provisória por uma só sua.</p>
+        <div class="campo">
+          <label for="nova">Nova senha</label>
+          <input id="nova" type="password" autocomplete="new-password" minlength="10" required>
+          <div class="mudo pequeno">Mínimo de 10 caracteres, com letras e números.</div>
+        </div>
+        <div class="campo">
+          <label for="repetir">Repita a nova senha</label>
+          <input id="repetir" type="password" autocomplete="new-password" required>
+        </div>
+        <button class="botao-primario largura-total" type="submit">Salvar senha</button>
+      </form>
+
+      <!-- Etapa 3 (1º acesso): cadastrar o 2FA -->
+      <form id="etapa-configurar_2fa" class="etapa oculto">
+        <h2>Ative a verificação em duas etapas</h2>
+        <p>Além da senha, o acesso pede um código do seu celular.</p>
+        <ol class="passos-2fa">
+          <li>Instale o <strong>Google Authenticator</strong> ou o <strong>Microsoft Authenticator</strong>.</li>
+          <li>No aplicativo, toque em <strong>+</strong> e leia o QR Code abaixo.</li>
+          <li>Digite o código de 6 dígitos que aparecer.</li>
+        </ol>
+        <div class="qr-caixa">
+          <img id="qr" alt="QR Code para o aplicativo autenticador" width="200" height="200">
+          <div class="mudo pequeno">Não consegue ler? Digite esta chave no aplicativo:</div>
+          <div id="segredo" class="segredo"></div>
+        </div>
+        <div class="campo">
+          <label for="codigo-ativar">Código de 6 dígitos</label>
+          <input id="codigo-ativar" class="campo-codigo" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+        </div>
+        <button class="botao-primario largura-total" type="submit">Ativar e entrar</button>
+      </form>
+
+      <!-- Etapa 4: código do aplicativo -->
+      <form id="etapa-codigo" class="etapa oculto">
+        <h2>Código de verificação</h2>
+        <p>Abra o aplicativo autenticador no seu celular e digite o código atual.</p>
+        <div class="campo">
+          <label for="codigo">Código de 6 dígitos</label>
+          <input id="codigo" class="campo-codigo" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+        </div>
+        <button class="botao-primario largura-total" type="submit">Verificar</button>
+        <p class="rodape-login">Trocou de celular? Peça ao administrador para resetar o seu 2FA.</p>
+      </form>
+
+      <div class="rodape-login">
+        <span class="selo-seguro">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Acesso protegido por senha e verificação em duas etapas
+        </span>
+        <div><button id="recomecar" class="botao-link oculto" type="button">Entrar com outra conta</button></div>
+      </div>
+    </div>
+  </main>
+  <script src="/js/comum.js"></script>
+  <script src="/js/login.js"></script>
+</body>
+</html>

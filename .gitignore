@@ -1,0 +1,9 @@
+# Dados sensíveis
+esp32_medidor_7m38_wifi/segredos.h
+opta_telemetria_7m38/segredos.h
+dashboard_web/.env
+dashboard_web/dados/
+# Dependências e ambientes
+node_modules/
+.venv/
+__pycache__/

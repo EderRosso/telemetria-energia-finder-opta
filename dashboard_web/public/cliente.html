@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a1324">
+  <meta name="robots" content="noindex">
+  <title>Meu consumo — Telemetria de Energia</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-interno">
+      <div class="marca">
+        <div class="marca-icone" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+        <div>
+          <div class="marca-nome" id="nome-cliente">Meu consumo</div>
+          <div class="marca-sub" id="nome-usuario"></div>
+        </div>
+      </div>
+      <div class="topo-acoes">
+        <button id="btn-senha" class="botao-secundario" type="button">Minha senha</button>
+        <button id="btn-sair" class="botao-secundario" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="conteudo">
+    <div class="cabecalho-secao">
+      <div>
+        <h2 id="titulo-mes">Consumo do mês</h2>
+        <p id="subtitulo-mes"></p>
+      </div>
+      <div class="ferramentas">
+        <select id="filtro-medidor" class="oculto" aria-label="Medidor"></select>
+        <input type="month" id="filtro-mes" aria-label="Mês">
+      </div>
+    </div>
+
+    <div id="sem-medidor" class="mensagem-aviso oculto">Nenhum medidor vinculado à sua conta ainda. Fale com o administrador.</div>
+
+    <div class="indicadores">
+      <div class="indicador">
+        <div class="indicador-rotulo">Consumo no período</div>
+        <div class="indicador-valor" id="kpi-kwh">—</div>
+        <div class="indicador-rodape" id="kpi-kwh-rodape"></div>
+      </div>
+      <div class="indicador ambar">
+        <div class="indicador-rotulo">Valor do período</div>
+        <div class="indicador-valor" id="kpi-valor">—</div>
+        <div class="indicador-rodape" id="kpi-valor-rodape"></div>
+      </div>
+      <div class="indicador neutro">
+        <div class="indicador-rotulo">Mês anterior</div>
+        <div class="indicador-valor" id="kpi-anterior">—</div>
+        <div class="indicador-rodape" id="kpi-anterior-rodape"></div>
+      </div>
+      <div class="indicador neutro">
+        <div class="indicador-rotulo">Potência agora</div>
+        <div class="indicador-valor" id="kpi-agora">—</div>
+        <div class="indicador-rodape" id="kpi-agora-rodape">aguardando leitura…</div>
+      </div>
+    </div>
+
+    <div class="painel">
+      <div class="painel-titulo"><h3>Consumo por dia</h3><span class="mudo pequeno">toque numa barra para ver o valor do dia</span></div>
+      <div class="grafico"><canvas id="grafico-dias" aria-label="Consumo diário do mês"></canvas></div>
+    </div>
+
+    <div class="painel">
+      <div class="painel-titulo"><h3>Últimos 12 meses</h3></div>
+      <div class="tabela-rolagem">
+        <table>
+          <thead><tr><th>Mês</th><th class="dir">Consumo</th><th class="dir esconder-celular">Tarifa média</th><th class="dir">Valor</th></tr></thead>
+          <tbody id="tabela-historico"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="mudo pequeno">Os valores do mês atual são parciais e se atualizam automaticamente. O consumo é medido pelo contador de energia do seu medidor.</p>
+  </main>
+
+  <script src="/vendor/chart.umd.js"></script>
+  <script src="/js/comum.js"></script>
+  <script src="/js/cliente.js"></script>
+</body>
+</html>
