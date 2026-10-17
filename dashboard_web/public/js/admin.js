@@ -497,6 +497,61 @@
   $('#btn-atualizar-auditoria').addEventListener('click', () => carregarAuditoria());
 
   // ======================================================================
+  // Tempo Real (WebSocket)
+  // ======================================================================
+  A.conectarTempoReal((msg) => {
+    if (msg.tipo === 'estado_inicial') {
+      if (msg.mqtt) atualizarMqtt(msg.mqtt);
+      for (const m of msg.medidores || []) {
+        if (m.historico && m.historico.length) {
+          for (const l of m.historico) guardarPotencia(m.medidor_id, l);
+          const med = estado.medidores.get(m.medidor_id);
+          if (med) med.ultima = m.historico.at(-1);
+        }
+      }
+      desenharTabelaAoVivo();
+      desenharGraficoPotencia();
+    } else if (msg.tipo === 'leitura') {
+      guardarPotencia(msg.medidor_id, msg.leitura);
+      const m = estado.medidores.get(msg.medidor_id);
+      if (m) {
+        m.ultima = msg.leitura;
+        m.online = true;
+      }
+      desenharTabelaAoVivo();
+      if (estado.medidorGrafico === msg.medidor_id) desenharGraficoPotencia();
+    } else if (msg.tipo === 'gateway') {
+      for (const m of estado.medidores.values()) {
+        if (m.gateway_id === msg.gateway_id) {
+          m.online = (msg.status === 'online');
+        }
+      }
+      desenharTabelaAoVivo();
+      const onlineTotal = [...estado.medidores.values()].filter((m) => m.online && m.ativo).length;
+      $('#kpi-online').replaceChildren(String(onlineTotal), el('small', { texto: `de ${estado.medidores.size}` }));
+    } else if (msg.tipo === 'medidores_alterados') {
+      carregarResumo().catch(() => {});
+      const abaMedidores = document.querySelector('#aba-medidores');
+      if (abaMedidores && !abaMedidores.classList.contains('oculto')) {
+        carregarMedidores().catch(() => {});
+      }
+    } else if (msg.tipo === 'mqtt') {
+      atualizarMqtt(msg);
+    }
+  }, (conectado) => {
+    const wsBadge = $('#status-ws');
+    if (wsBadge) wsBadge.className = `etiqueta ${conectado ? 'ok' : 'erro'}`;
+  });
+
+  // Atualiza os valores acumulados e confere timeouts a cada 30 segundos
+  setInterval(() => {
+    const abaAtiva = document.querySelector('.aba.ativa');
+    if (abaAtiva && abaAtiva.dataset.aba === 'geral') {
+      carregarResumo().catch(() => {});
+    }
+  }, 30_000);
+
+  // ======================================================================
   // Início
   // ======================================================================
   $('#btn-sair').addEventListener('click', A.sair);

@@ -20,6 +20,8 @@ const statusMqtt = { conectado: false, broker: config.MQTT_URL.replace(/\/\/.*@/
 
 // Consultas preparadas (mais rápidas)
 const sqlBuscarMedidor = db.prepare('SELECT * FROM medidores WHERE gateway_id = ? AND slave_id = ?');
+const sqlBuscarMedidorPorId = db.prepare('SELECT * FROM medidores WHERE id = ?');
+const sqlGatewayStatus = db.prepare('SELECT status FROM gateways WHERE id = ?');
 const sqlCriarMedidor = db.prepare('INSERT INTO medidores (gateway_id, slave_id, nome, modelo) VALUES (?,?,?,?)');
 const sqlGravarLeitura = db.prepare(`
   INSERT INTO leituras (medidor_id, ts, tensao_v, corrente_a, potencia_w, fp, frequencia_hz, energia_kwh)
@@ -146,8 +148,12 @@ function iniciarMqtt() {
   return cliente;
 }
 
-/** Medidor "online" = enviou leitura nos últimos OFFLINE_APOS_S segundos. */
+/** Medidor "online" = gateway online e enviou leitura nos últimos OFFLINE_APOS_S segundos. */
 function estaOnline(medidorId) {
+  const m = sqlBuscarMedidorPorId.get(medidorId);
+  if (!m) return false;
+  const g = sqlGatewayStatus.get(m.gateway_id);
+  if (g && g.status === 'offline') return false;
   const e = aoVivo.get(medidorId);
   return !!(e && e.ultima && Date.now() - Date.parse(e.ultima.ts) < config.OFFLINE_APOS_S * 1000);
 }
