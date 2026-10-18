@@ -1,9 +1,13 @@
-# Plano de Implementação: Configuração do Prefixo MQTT via Painel do Administrador
+# Plano de Implementação: Configuração MQTT no Painel & Ciclos de Cobrança por Cliente
 
 > **Documento de especificação técnica e guia de implementação futura.**  
-> Permite que o operador/administrador configure o **Prefixo MQTT** (e opcionalmente o Broker) diretamente pela interface Web da Dashboard, sem precisar editar arquivos `.env` ou reiniciar o servidor Node.js.
+> Contém duas melhorias arquiteturais planejadas para o sistema:
+> 1. **Parte 1:** Configuração dinâmica de Prefixo e Broker MQTT diretamente pelo Painel Admin (sem mexer em `.env`).
+> 2. **Parte 2:** Fechamento de faturamento e ciclos de corte personalizados por cliente (`dia_fechamento`).
 
 ---
+
+# Parte 1: Configuração do Prefixo MQTT via Painel do Administrador
 
 ## 1. Visão Geral e Justificativa
 
@@ -175,3 +179,183 @@ Quando formos implementar:
 4. **Persistência pós-reinicialização**:
    - Parar o servidor e subir novamente.
    - Confirmar que ele inicia lendo o prefixo salvo no SQLite.
+
+---
+
+# Parte 2: Fechamento de Fatura e Ciclo Personalizado por Cliente
+
+> **Especificação técnica para cobrança por ciclo de corte individual.**  
+> Permite que cada cliente cadastrado tenha um **dia específico do mês para fechamento** (ex: dia 10, dia 15, dia 20 ou dia 1º), calculando o consumo e emitindo relatórios com base no período contratual exato.
+
+---
+
+## 1. Regra de Negócio e Cálculo dos Ciclos
+
+### 1.1 Definição do Dia de Fechamento (`dia_fechamento`)
+- O dia de fechamento é um número inteiro entre **1 e 28** (limitado a 28 para garantir compatibilidade com todos os meses, incluindo Fevereiro).
+- **Valor padrão:** `1` (mês civil tradicional, de 01 a 31).
+
+### 1.2 Determinação das Datas de Apuração
+Para uma fatura de referência `AAAA-MM`:
+- **Se `dia_fechamento == 1`:**
+  - Início: `AAAA-MM-01` (00:00 local)
+  - Fim: Primeiro dia do mês seguinte `AAAA-(MM+1)-01` (00:00 local)
+  - *Exemplo (Outubro/2026):* `01/10/2026` a `31/10/2026`.
+- **Se `dia_fechamento == N` (ex: N = 15):**
+  - Início: Dia `N` do mês anterior `AAAA-(MM-1)-15` (00:00 local)
+  - Fim: Dia `N` do mês de referência `AAAA-MM-15` (00:00 local)
+  - *Exemplo (Outubro/2026 com corte no dia 15):* Leituras apuradas de **`15/09/2026` até `14/10/2026`** (às 23:59:59).
+
+```mermaid
+flowchart LR
+    subgraph Ciclo_15 ["Cliente com Fechamento no Dia 15"]
+        A["15/09 00:00<br>Leitura inicial do contador"] -->|Consumo do período| B["14/10 23:59<br>Leitura final do contador"]
+        B --> C["Fatura de Outubro/2026"]
+    end
+    subgraph Ciclo_01 ["Cliente com Fechamento no Dia 01"]
+        D["01/10 00:00<br>Leitura inicial"] -->|Consumo civil| E["31/10 23:59<br>Leitura final"]
+        E --> F["Fatura de Outubro/2026"]
+    end
+```
+
+### 1.3 Regra de Ouro da Medição Mantida
+- **Diferença de contadores:** O consumo em kWh continua sendo calculado estritamente pela subtração do acumulador de energia (`energia_kwh`) entre o início e o fim do período.
+- **Tarifa diária ponderada:** Cada dia dentro do ciclo utiliza a tarifa específica que estava vigente naquela data.
+
+---
+
+## 2. Passo a Passo de Implementação
+
+### Passo 1: Migração no Banco de Dados (`dashboard_web/src/db.js`)
+Adicionar a coluna `dia_fechamento` na tabela `clientes`:
+
+```sql
+-- Migration automática na inicialização se a coluna não existir
+ALTER TABLE clientes ADD COLUMN dia_fechamento INTEGER NOT NULL DEFAULT 1 CHECK (dia_fechamento BETWEEN 1 AND 28);
+```
+
+Código de suporte em `db.js`:
+```javascript
+const colunasCliente = db.prepare("PRAGMA table_info(clientes)").all();
+if (!colunasCliente.some(c => c.name === 'dia_fechamento')) {
+  db.exec("ALTER TABLE clientes ADD COLUMN dia_fechamento INTEGER NOT NULL DEFAULT 1 CHECK (dia_fechamento BETWEEN 1 AND 28)");
+}
+```
+
+---
+
+### Passo 2: Função de Período no Motor de Cálculo (`dashboard_web/src/consumo.js`)
+
+Implementar o cálculo dinâmico das datas do ciclo:
+
+```javascript
+/**
+ * Calcula o intervalo UTC e os dias locais para o ciclo de um cliente.
+ * @param {string} mes - 'AAAA-MM'
+ * @param {number} diaFechamento - 1 a 28
+ */
+function calcularPeriodoCiclo(mes, diaFechamento = 1) {
+  if (diaFechamento === 1) {
+    const inicio = inicioDiaUtc(`${mes}-01`);
+    const fim = inicioDiaUtc(`${mesSeguinte(mes)}-01`);
+    return {
+      inicioIso: inicio,
+      fimIso: fim,
+      diaInicio: `${mes}-01`,
+      diaFim: `${mes}-${String(diasDoMes(mes).length).padStart(2, '0')}`,
+      descricao: `01 a ${diasDoMes(mes).length}/${mes.slice(5, 7)}`
+    };
+  }
+
+  // Se diaFechamento > 1: ciclo inicia no mês anterior
+  const mesAnt = mesAnterior(mes);
+  const diaFmt = String(diaFechamento).padStart(2, '0');
+  const diaAntFmt = String(diaFechamento - 1).padStart(2, '0');
+
+  const diaInicio = `${mesAnt}-${diaFmt}`;
+  const diaFim = `${mes}-${diaAntFmt}`;
+
+  return {
+    inicioIso: inicioDiaUtc(diaInicio),
+    fimIso: inicioDiaUtc(`${mes}-${diaFmt}`), // meia-noite do dia de fechamento (exclusivo)
+    diaInicio,
+    diaFim,
+    descricao: `${diaFmt}/${mesAnt.slice(5, 7)} a ${diaAntFmt}/${mes.slice(5, 7)}`
+  };
+}
+```
+
+Atualizar o cálculo de faturamento por cliente:
+```javascript
+function consumoDoClienteNoCiclo(clienteId, mes, medidorIds, diaFechamento = 1) {
+  const periodo = calcularPeriodoCiclo(mes, diaFechamento);
+  const tarifas = listarTarifas();
+  let kwhTotal = 0, valorTotal = 0;
+  const porMedidor = [];
+
+  for (const id of medidorIds) {
+    const r = consumoPorDia(id, periodo.inicioIso, periodo.fimIso);
+    let kwhMed = 0, valorMed = 0;
+    for (const [dia, k] of Object.entries(r.dias)) {
+      const t = tarifaNoDia(dia, tarifas);
+      kwhMed += k;
+      valorMed += k * (t ? t.valor_kwh : 0);
+    }
+    kwhTotal += kwhMed;
+    valorTotal += valorMed;
+    porMedidor.push({ medidor_id: id, kwh: arred(kwhMed, 3), valor: arred(valorMed, 2) });
+  }
+
+  return {
+    mes,
+    periodo,
+    kwh: arred(kwhTotal, 3),
+    valor: arred(valorTotal, 2),
+    porMedidor
+  };
+}
+```
+
+---
+
+### Passo 3: API do Servidor (`dashboard_web/src/rotas.js`)
+
+1. **Cadastro e Edição de Clientes (`POST /api/clientes`, `PUT /api/clientes/:id`)**:
+   - Aceitar e validar o parâmetro `dia_fechamento` (1 a 28).
+2. **Relatório de Faturamento (`GET /api/faturamento?mes=AAAA-MM`)**:
+   - Retornar para cada cliente o objeto `periodo` com as datas exatas de apuração.
+3. **Planilha CSV (`GET /api/faturamento/csv?mes=AAAA-MM`)**:
+   - Incluir a coluna **`Período de Apuração`** no cabeçalho do arquivo CSV:
+     ```csv
+     Cliente,Documento,Dia de Fechamento,Período de Apuração,Medidores,Consumo (kWh),Valor (R$)
+     Padaria Pão Quente,12.345.678/0001-90,15,15/09/2026 a 14/10/2026,esp32sim/33,342.150,256.61
+     Oficina Torque,98.765.432/0001-10,01,01/10/2026 a 31/10/2026,opta01/35,512.800,384.60
+     ```
+
+---
+
+### Passo 4: Interface do Usuário
+
+1. **Aba Clientes (`admin.html` / `admin.js`)**:
+   - Campo no modal de cliente:
+     ```html
+     <div class="campo">
+       <label for="cliente-fechamento">Dia de Fechamento do Ciclo (1 a 28)</label>
+       <input type="number" id="cliente-fechamento" min="1" max="28" value="1" required>
+       <small class="mudo">Ex: 15 para faturas apuradas do dia 15 ao dia 14 do mês seguinte.</small>
+     </div>
+     ```
+2. **Aba Faturamento (`admin.html`)**:
+   - Na listagem de faturamento, exibir abaixo do nome do cliente o período apurado (ex: `Período: 15/09 a 14/10`).
+3. **Painel do Cliente (`cliente.html` / `cliente.js`)**:
+   - No cartão de consumo do cliente, exibir:
+     `Fatura de Outubro/2026 (Ciclo: 15/09/2026 a 14/10/2026)`.
+
+---
+
+## 3. Roteiro de Testes Automatizados Recomendado
+
+1. **Teste de Ciclo Padrão (Dia 1)**: Validar se `dia_fechamento = 1` gera exatamente `01/10` a `31/10`.
+2. **Teste de Ciclo Fracionado (Dia 15)**: Validar se `dia_fechamento = 15` gera `15/09` a `14/10`.
+3. **Teste de Virada de Ano**: Validar mês `2027-01` com `dia_fechamento = 10` apurando de `10/12/2026` a `09/01/2027`.
+4. **Teste de Tarifa em Ciclo Cruzado**: Alterar a tarifa em 01/10 e validar se os dias de setembro usam a tarifa antiga e os dias de outubro usam a nova.
